@@ -46,6 +46,12 @@ peer range describes functional compatibility, not a blanket security approval
 of every older host version. Browser interaction, alternate host versions and deployed
 Cloudflare acceptance remain pending; a build is not evidence of those behaviors.
 
+The pure API and JWT tests support Node 22.14.0 and later. The maintained Astro
+7.4.13 build fixture requires Node 22.23.4 or later; its higher requirement belongs
+to the optional host toolchain. CI checks the core on 22.14.0 and runs the full
+Starlight fixture on 22.23.4 and 24.22.3. Use that newer Node baseline when building
+the optional components; `npm run check` includes the Astro build.
+
 ## Minimal policy
 
 Install a supplied development tarball in a separate project:
