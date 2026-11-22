@@ -37,8 +37,13 @@ acceptance is completed. A registry installation is not available from this repo
 ESM is the supported module format. The package declares `jose` as its runtime
 dependency; importing the pure policy or browser entry does not import JWT code.
 Astro/Starlight are consumer-owned host dependencies and are needed only for the
-Astro components. The current integration fixture targets Astro 7.3.8 and
-Starlight 0.41.11. Browser interaction, alternate host versions and deployed
+Astro components. The maintained integration fixture targets Astro 7.4.13 and
+Starlight 0.41.11; an earlier functional build also passed on Astro 7.3.8.
+Use a patched host: Astro 7.3.8 has advisories GHSA-mh32-jxcr-mh9f and
+GHSA-r3h5-4585-7x3w. The components use static tags, and this fixture has no Node
+image adapter, but this does not assess unrelated consumer code. The permissive
+peer range describes functional compatibility, not a blanket security approval
+of every older host version. Browser interaction, alternate host versions and deployed
 Cloudflare acceptance remain pending; a build is not evidence of those behaviors.
 
 ## Minimal policy
