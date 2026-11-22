@@ -1,0 +1,62 @@
+{
+  "name": "@ehven/starlight-area-cloudflare-access-controller",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "type": "module",
+  "description": "Roster authorization for independent protected areas, with Cloudflare Access and Starlight integrations.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.mts",
+      "import": "./src/index.mjs"
+    },
+    "./cloudflare": "./src/authorize.mjs",
+    "./rosters": "./src/rosters.mjs",
+    "./browser": "./src/access-snapshot.mjs",
+    "./catalog": "./src/catalog.mjs",
+    "./entitlements": "./src/entitlements.mjs",
+    "./astro/AccessIdentity.astro": "./src/AccessIdentity.astro",
+    "./astro/CourseNavigation.astro": "./src/CourseNavigation.astro"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/*.astro"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "npm test && npm run check:types && npm run check:astro",
+    "check:types": "tsc --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 test/types.mts",
+    "check:astro": "astro build --root fixtures/starlight"
+  },
+  "dependencies": {
+    "jose": "6.2.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ehven-consultants-npm-products/ehven-starlight-area-cloudflare-access-controller.git"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "0.41.11",
+    "astro": "7.3.8",
+    "typescript": "6.0.3"
+  },
+  "peerDependencies": {
+    "astro": "7.3.8",
+    "@astrojs/starlight": "0.41.11"
+  },
+  "peerDependenciesMeta": {
+    "astro": {
+      "optional": true
+    },
+    "@astrojs/starlight": {
+      "optional": true
+    }
+  }
+}

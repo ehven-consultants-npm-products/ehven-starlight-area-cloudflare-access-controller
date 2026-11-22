@@ -1,0 +1,6 @@
+node_modules/
+*.tgz
+coverage/
+.astro/
+fixtures/starlight/.astro/
+fixtures/starlight/dist/

@@ -1,0 +1,8 @@
+---
+import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
+import AccessIdentity from '@ehven/starlight-area-cloudflare-access-controller/astro/AccessIdentity.astro';
+import CourseNavigation from '@ehven/starlight-area-cloudflare-access-controller/astro/CourseNavigation.astro';
+---
+<DefaultSidebar {...Astro.props} />
+<AccessIdentity endpoint="/previews/_access.json" productionHostname="example.org" />
+<CourseNavigation endpoint="/previews/_access.json" productionHostname="example.org" />

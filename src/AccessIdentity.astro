@@ -1,0 +1,39 @@
+---
+interface Props { endpoint?: string; productionHostname: string; prereleaseHostname?: string; }
+const { endpoint, productionHostname, prereleaseHostname } = Astro.props;
+---
+{endpoint && <span data-access-identity data-endpoint={endpoint} data-host={productionHostname} data-preview-host={prereleaseHostname} role="status" aria-atomic="true" hidden></span>}
+
+<script>
+	import { loadAccessSnapshot } from './access-snapshot.mjs';
+	async function showAccessIdentity() {
+		for (const node of document.querySelectorAll<HTMLElement>('[data-access-identity]')) {
+			const endpoint = node.dataset.endpoint;
+			if (!endpoint) continue;
+			if (![node.dataset.host, node.dataset.previewHost].includes(location.hostname)) {
+				if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
+					node.textContent = 'Local preview · no sign-in';
+					node.hidden = false;
+				}
+				continue;
+			}
+			try {
+				const { identity } = await loadAccessSnapshot(endpoint);
+				if (typeof identity?.email !== 'string' || !identity.email.includes('@') || identity.email.length > 254) throw new Error('Identity unavailable');
+				node.textContent = identity.email;
+				node.setAttribute('aria-label', `Signed in as ${identity.email}`);
+				node.title = `Signed in as ${identity.email}`;
+			} catch {
+				node.textContent = 'Identity unavailable';
+			}
+			node.hidden = false;
+		}
+	}
+	showAccessIdentity();
+</script>
+
+<style is:global>
+	[data-access-identity] { display: block; max-inline-size: 100%; overflow-wrap: anywhere; unicode-bidi: plaintext; font-size: 0.875rem; line-height: 1.5; color: var(--sl-color-text, inherit); }
+	[data-access-identity][hidden] { display: none; }
+	@media print { [data-access-identity] { display: none; } }
+</style>
