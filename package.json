@@ -44,12 +44,12 @@
   },
   "devDependencies": {
     "@astrojs/starlight": "0.41.11",
-    "astro": "7.3.8",
+    "astro": "7.4.13",
     "typescript": "6.0.3"
   },
   "peerDependencies": {
-    "astro": "7.3.8",
-    "@astrojs/starlight": "0.41.11"
+    "@astrojs/starlight": "0.41.11",
+    "astro": ">=7.3.8 <8"
   },
   "peerDependenciesMeta": {
     "astro": {
