@@ -22,3 +22,5 @@ jobs:
       - run: npm test && npm run check:types
       - if: matrix.node != '22.14.0'
         run: npm run check:astro
+      - if: matrix.node == '24.22.3'
+        run: python3 test/browser/check.py

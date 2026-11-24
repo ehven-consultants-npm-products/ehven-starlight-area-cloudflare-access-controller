@@ -17,73 +17,84 @@ const { endpoint, productionHostname, prereleaseHostname, summaryPaths = {} } = 
 	site-search[data-access-unavailable] { display: none !important; }
 </style>
 <script>
-	import { loadAccessSnapshot } from './access-snapshot.mjs';
-	let searchRestricted = false;
-	function sharedSearchAvailable(available: boolean) {
-		searchRestricted = !available;
-		for (const search of document.querySelectorAll<HTMLElement>('site-search')) {
-			search.toggleAttribute('data-access-unavailable', !available);
-			const button = search.querySelector<HTMLButtonElement>('button[data-open-modal]');
-			if (button) button.disabled = !available;
-			if (!available) search.querySelector<HTMLDialogElement>('dialog[open]')?.close();
-		}
+	import { accessDOM, onAccessPage } from './browser-lifecycle.mjs';
+	import { normalizePathname, pathWithinRoot } from './paths.mjs';
+
+	function summaryFor(value: unknown) {
+		if (typeof value !== 'string') return;
+		try { return normalizePathname(value); } catch { return; }
 	}
-	// Starlight's window shortcut opens its dialog directly, bypassing the button.
-	window.addEventListener('keydown', (event) => {
-		if (searchRestricted && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-			event.preventDefault();
-			event.stopImmediatePropagation();
-		}
-	}, { capture: true });
-	async function refreshCourseNavigation() {
+
+	onAccessPage(async (load, signal) => {
 		const widget = document.querySelector<HTMLElement>('[data-course-navigation]');
 		if (!widget?.dataset.endpoint || ![widget.dataset.host, widget.dataset.previewHost].includes(location.hostname)) return;
-		sharedSearchAvailable(false);
+
+		const dom = accessDOM(signal);
+		const searchScope = new AbortController();
+		signal.addEventListener('abort', () => searchScope.abort(), { once: true });
+		const searchDOM = accessDOM(searchScope.signal);
+		for (const search of document.querySelectorAll('site-search')) {
+			searchDOM.attribute(search, 'data-access-unavailable', '');
+			const button = search.querySelector('button[data-open-modal]');
+			if (button) searchDOM.attribute(button, 'disabled', '');
+			search.querySelector<HTMLDialogElement>('dialog[open]')?.close();
+		}
+		window.addEventListener('keydown', event => {
+			if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			}
+		}, { capture: true, signal: searchScope.signal });
+
 		try {
-			const { courses } = await loadAccessSnapshot(widget.dataset.endpoint);
-			if (!Array.isArray(courses)) throw new Error('Enrollment unavailable');
-			sharedSearchAvailable(courses.length > 0 && courses.every((course) => course.allowed === true));
+			const { courses } = await load(widget.dataset.endpoint);
+			if (signal.aborted || !widget.isConnected) return;
+			if (courses.length > 0 && courses.every(course => course.allowed)) searchScope.abort();
+
 			const summaryPaths = JSON.parse(widget.dataset.summaries || '{}');
-			const template = widget.querySelector<HTMLTemplateElement>('[data-course-lock]');
-			const icon = template?.content.firstElementChild;
-			if (!icon) throw new Error('Lock icon unavailable');
+			const icon = widget.querySelector<HTMLTemplateElement>('[data-course-lock]')?.content.firstElementChild;
+			if (!icon) return;
 			const lock = () => icon.cloneNode(true);
-			for (const course of courses) {
-				if (course.allowed || typeof course.path !== 'string') continue;
-				for (const link of document.querySelectorAll<HTMLAnchorElement>('.sidebar a[href]')) {
-					const pathname = new URL(link.href).pathname.replace(/\/$/, '');
-					if (pathname !== course.path && !pathname.startsWith(`${course.path}/`)) continue;
-					if (link.hasAttribute('data-course-lesson')) { link.closest('li')?.setAttribute('hidden', ''); continue; }
-					if (!link.hasAttribute('data-course-overview') || link.dataset.courseLocked) continue;
-					const title = link.textContent?.trim() || 'Coachware';
-					const summary = summaryPaths[course.path];
-					if (typeof summary === 'string' && summary.startsWith('/') && !summary.startsWith('//')) {
-						link.href = summary;
-						if (new URL(link.href).pathname === location.pathname) link.setAttribute('aria-current', 'page');
-						link.setAttribute('aria-label', `${title}. Additional enrollment required. View summary and request access.`);
-					} else {
-						link.setAttribute('aria-label', `${title}. Additional enrollment required.`);
-					}
-					link.dataset.courseLocked = 'true';
-					const tail = document.createElement('span');
-					tail.className = 'course-enrollment-lock-tail';
-					const gap = document.createElement('span');
-					gap.className = 'course-enrollment-lock-gap';
-					gap.textContent = '\u00a0';
-					const words = /^(.*\s)?(\S+)$/.exec(title);
-					tail.append(words?.[2] || title, gap, lock());
-					const label = link.querySelector('span') || link;
-					label.replaceChildren(words?.[1] || '', tail);
+			const denied = courses.filter(course => !course.allowed);
+			for (const link of document.querySelectorAll<HTMLAnchorElement>('.sidebar a[href]')) {
+				const url = new URL(link.href);
+				if (url.origin !== location.origin) continue;
+				const course = denied.find(course => pathWithinRoot(url.pathname, course.path));
+				if (!course) continue;
+				if (link.hasAttribute('data-course-lesson')) {
+					const item = link.closest('li');
+					if (item) dom.attribute(item, 'hidden', '');
+					continue;
 				}
+				if (!link.hasAttribute('data-course-overview') || link.hasAttribute('data-course-locked')) continue;
+				const title = link.textContent?.trim() || 'Coachware';
+				const summary = summaryFor(summaryPaths?.[course.path]);
+				if (summary) {
+					dom.attribute(link, 'href', summary);
+					if (summary === location.pathname) dom.attribute(link, 'aria-current', 'page');
+				}
+				dom.attribute(link, 'aria-label', summary
+					? `${title}. Additional enrollment required. View summary and request access.`
+					: `${title}. Additional enrollment required.`);
+				dom.attribute(link, 'data-course-locked', 'true');
+				const tail = document.createElement('span');
+				tail.className = 'course-enrollment-lock-tail';
+				const gap = document.createElement('span');
+				gap.className = 'course-enrollment-lock-gap';
+				gap.textContent = '\u00a0';
+				const words = /^(.*\s)?(\S+)$/.exec(title);
+				tail.append(words?.[2] || title, gap, lock());
+				dom.children(link.querySelector('span') || link, words?.[1] || '', tail);
 			}
 			const status = widget.querySelector('[data-access-status]');
 			if (status) {
 				const description = document.createElement('span');
 				description.className = 'course-enrollment-lock-description';
 				description.textContent = 'with a lock';
-				status.replaceChildren('Coachware marked ', lock(), description, ' requires additional enrollment.');
+				dom.children(status, 'Coachware marked ', lock(), description, ' requires additional enrollment.');
 			}
-		} catch { /* Request-time authorization still protects every course if navigation cannot refresh. */ }
-	}
-	refreshCourseNavigation();
+		} catch {
+			// Keep the initial navigation and the conservative search state.
+		}
+	});
 </script>
