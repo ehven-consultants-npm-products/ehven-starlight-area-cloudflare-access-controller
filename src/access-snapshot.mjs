@@ -10,9 +10,13 @@ export function createAccessSnapshotLoader(fetchImpl = (...args) => fetch(...arg
 			if (!response.ok) throw new Error('Access information unavailable.');
 			const value = await response.json();
 			if (!value || typeof value.identity?.email !== 'string' || value.identity.email.length > 254
-				|| !value.identity.email.includes('@') || !Array.isArray(value.courses) || value.courses.length > 256
+				|| !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.identity.email) || !Array.isArray(value.courses) || value.courses.length > 256
 				|| value.courses.some(course => !course || typeof course.allowed !== 'boolean')) throw new Error('Access information unavailable.');
-			for (const course of value.courses) validateAreaRoot(course.path);
+			const roots = new Set();
+			for (const course of value.courses) {
+				if (roots.has(validateAreaRoot(course.path))) throw new Error('Access information unavailable.');
+				roots.add(course.path);
+			}
 			return value;
 		})();
 		pending.set(endpoint, request);

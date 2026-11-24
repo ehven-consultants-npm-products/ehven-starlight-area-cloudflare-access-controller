@@ -166,9 +166,12 @@ encodings but does not rewrite the Request object.
 
 `authorizeRequest` returns a protected denial response or `null` on success. Its
 `onIdentity` callback receives verified identity after scope authorization.
-Missing bindings return 503; invalid tokens or grants return 403. Currently other
-verifier errors also return generic 403; differentiated availability diagnostics
-are pending. The trusted `verify` test seam never permits trusting browser identity.
+Missing or invalid bindings and signing-key retrieval failures return a generic
+503. Invalid tokens, unknown signing keys in a valid key set, and insufficient
+grants return 403. Both responses are non-cacheable. The verifier retains at most
+32 team key-set resolvers per process or isolate, with a five-second fetch timeout,
+ten-minute key-set freshness and a 30-second interval before refreshing for an
+unknown key. A failed refresh denies the request. The trusted `verify` test seam never permits trusting browser identity.
 
 Protected responses disable browser/CDN caching and indexing and remove validators.
 Keep protected media/downloads under the appropriate protected root. A shared
@@ -193,8 +196,10 @@ explicit same-origin endpoint and production hostname, with an optional prerelea
 hostname. CourseNavigation also accepts a `summaryPaths` map from course root to
 private summary URL. It expects the documented course/lesson attributes in the
 consumer's Starlight sidebar. These components do not create endpoints or configure
-Access. Their current lifecycle targets normal full-page navigation; remount/client
-router lifecycle and interaction accessibility acceptance remain pending.
+Access. The components mount on normal page loads and Astro ClientRouter page
+loads. Page swaps and page exits remove package-owned decorations and listeners,
+and a restored history entry fetches a fresh snapshot. Late results are ignored
+after cleanup. Test these interactions with the consumer's actual sidebar markup.
 
 The browser loader includes same-origin credentials, disables caching, rejects
 redirects, and uses an eight-second timeout. It shares only concurrent reads;

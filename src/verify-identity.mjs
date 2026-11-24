@@ -1,8 +1,39 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
 import { normalizeEmail } from './rosters.mjs';
 
 // Cache rotating public signing keys, never authorization decisions or identities.
 const keySets = new Map();
+const MAX_TEAM_KEY_SETS = 32;
+
+export class AccessKeysUnavailableError extends Error {
+	constructor() {
+		super('Access signing keys are unavailable.');
+		this.name = 'AccessKeysUnavailableError';
+	}
+}
+
+function remoteKeys(teamDomain) {
+	let keys = keySets.get(teamDomain);
+	if (keys) {
+		keySets.delete(teamDomain);
+	} else {
+		keys = createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`), {
+			timeoutDuration: 5000,
+			cacheMaxAge: 600000,
+			cooldownDuration: 30000,
+		});
+	}
+	keySets.set(teamDomain, keys);
+	if (keySets.size > MAX_TEAM_KEY_SETS) keySets.delete(keySets.keys().next().value);
+	return async (header, token) => {
+		try {
+			return await keys(header, token);
+		} catch (error) {
+			if (error instanceof errors.JWKSNoMatchingKey || error instanceof errors.JWKSMultipleMatchingKeys) throw error;
+			throw new AccessKeysUnavailableError();
+		}
+	};
+}
 
 export function validateTeamDomain(teamDomain) {
 	if (typeof teamDomain !== 'string' || !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(teamDomain)) {
@@ -18,15 +49,8 @@ export async function verifyAccessIdentity(request, { teamDomain, audience }, { 
 	}
 	const token = request.headers.get('Cf-Access-Jwt-Assertion');
 	if (!token || token.length > 32768) throw new Error('Access authentication required.');
-	if (!keySet) {
-		if (!keySets.has(teamDomain)) {
-			keySets.set(teamDomain, createRemoteJWKSet(new URL(`${teamDomain}/cdn-cgi/access/certs`), {
-				timeoutDuration: 5000,
-			}));
-		}
-		keySet = keySets.get(teamDomain);
-	}
-	const { payload } = await jwtVerify(token, keySet, {
+	if (now !== undefined && !Number.isFinite(now)) throw new Error('Invalid Access verification time.');
+	const { payload } = await jwtVerify(token, keySet ?? remoteKeys(teamDomain), {
 		issuer: teamDomain,
 		audience,
 		algorithms: ['RS256'],

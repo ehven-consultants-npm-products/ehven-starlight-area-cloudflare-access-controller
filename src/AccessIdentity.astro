@@ -5,31 +5,33 @@ const { endpoint, productionHostname, prereleaseHostname } = Astro.props;
 {endpoint && <span data-access-identity data-endpoint={endpoint} data-host={productionHostname} data-preview-host={prereleaseHostname} role="status" aria-atomic="true" hidden></span>}
 
 <script>
-	import { loadAccessSnapshot } from './access-snapshot.mjs';
-	async function showAccessIdentity() {
-		for (const node of document.querySelectorAll<HTMLElement>('[data-access-identity]')) {
+	import { accessDOM, onAccessPage } from './browser-lifecycle.mjs';
+
+	onAccessPage(async (load, signal) => {
+		const dom = accessDOM(signal);
+		await Promise.all([...document.querySelectorAll<HTMLElement>('[data-access-identity]')].map(async node => {
 			const endpoint = node.dataset.endpoint;
-			if (!endpoint) continue;
+			if (!endpoint) return;
 			if (![node.dataset.host, node.dataset.previewHost].includes(location.hostname)) {
 				if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
-					node.textContent = 'Local preview · no sign-in';
-					node.hidden = false;
+					dom.children(node, 'Local preview · no sign-in');
+					dom.attribute(node, 'hidden', null);
 				}
-				continue;
+				return;
 			}
 			try {
-				const { identity } = await loadAccessSnapshot(endpoint);
-				if (typeof identity?.email !== 'string' || !identity.email.includes('@') || identity.email.length > 254) throw new Error('Identity unavailable');
-				node.textContent = identity.email;
-				node.setAttribute('aria-label', `Signed in as ${identity.email}`);
-				node.title = `Signed in as ${identity.email}`;
+				const { identity } = await load(endpoint);
+				if (signal.aborted || !node.isConnected) return;
+				dom.children(node, identity.email);
+				dom.attribute(node, 'aria-label', `Signed in as ${identity.email}`);
+				dom.attribute(node, 'title', `Signed in as ${identity.email}`);
 			} catch {
-				node.textContent = 'Identity unavailable';
+				if (signal.aborted || !node.isConnected) return;
+				dom.children(node, 'Identity unavailable');
 			}
-			node.hidden = false;
-		}
-	}
-	showAccessIdentity();
+			dom.attribute(node, 'hidden', null);
+		}));
+	});
 </script>
 
 <style is:global>

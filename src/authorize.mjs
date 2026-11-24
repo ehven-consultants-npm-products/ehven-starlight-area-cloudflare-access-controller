@@ -1,7 +1,7 @@
 import { rosterAllows, learnerGrants } from './rosters.mjs';
-import { verifyAccessIdentity } from './verify-identity.mjs';
+import { AccessKeysUnavailableError, validateTeamDomain, verifyAccessIdentity } from './verify-identity.mjs';
 import { policyScopeAllows } from './policy.mjs';
-export { verifyAccessIdentity, validateTeamDomain } from './verify-identity.mjs';
+export { AccessKeysUnavailableError, verifyAccessIdentity, validateTeamDomain } from './verify-identity.mjs';
 
 export function protectedResponse(response) {
 	const headers = new Headers(response.headers);
@@ -17,7 +17,7 @@ export function protectedResponse(response) {
 }
 
 export function denyAccess(status = 403) {
-	return protectedResponse(new Response(status === 503 ? 'Access configuration unavailable.' : 'Access denied.', { status }));
+	return protectedResponse(new Response(status === 503 ? 'Access temporarily unavailable.' : 'Access denied.', { status }));
 }
 
 // Reuse enrollment decisions after a host-level identity has already been verified.
@@ -31,16 +31,19 @@ export function scopeAllows(policy, scope, email, now = Date.now()) {
 	return rosterAllows(grants, email, now);
 }
 
-export async function authorizeRequest(request, scope, policy, { verify = verifyAccessIdentity, now = Date.now(), onIdentity = () => {} } = {}) {
+export async function authorizeRequest(request, scope, policy, { verify, now = Date.now(), onIdentity = () => {} } = {}) {
 	const audience = Object.hasOwn(policy.audiences ?? {}, scope) ? policy.audiences[scope] : undefined;
-	if (!audience || !policy.teamDomain) return denyAccess(503);
+	if (typeof audience !== 'string' || !/^[a-f0-9]{64}$/.test(audience)) return denyAccess(503);
+	try { validateTeamDomain(policy.teamDomain); } catch { return denyAccess(503); }
 	try {
-		const identity = await verify(request, { teamDomain: policy.teamDomain, audience });
+		const configuration = { teamDomain: policy.teamDomain, audience };
+		const identity = verify
+			? await verify(request, configuration)
+			: await verifyAccessIdentity(request, configuration, { now });
 		if (!scopeAllows(policy, scope, identity.email, now)) return denyAccess();
 		onIdentity(identity);
 		return null;
-	} catch {
-		// Do not disclose verifier internals, email addresses, or bearer tokens.
-		return denyAccess();
+	} catch (error) {
+		return denyAccess(error instanceof AccessKeysUnavailableError ? 503 : 403);
 	}
 }
