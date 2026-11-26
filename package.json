@@ -1,7 +1,7 @@
 {
   "name": "@ehven/starlight-area-cloudflare-access-controller",
-  "version": "0.1.0-dev.0",
-  "private": true,
+  "version": "1.0.0",
+  "private": false,
   "type": "module",
   "description": "Roster authorization for independent protected areas, with Cloudflare Access and Starlight integrations.",
   "license": "MIT",
@@ -22,9 +22,30 @@
     "./astro/CourseNavigation.astro": "./src/CourseNavigation.astro"
   },
   "files": [
-    "src/",
+    "CHANGELOG.md",
+    "LICENSE",
     "README.md",
-    "LICENSE"
+    "SECURITY.md",
+    "src/AccessIdentity.astro",
+    "src/CourseNavigation.astro",
+    "src/access-snapshot.d.mts",
+    "src/access-snapshot.mjs",
+    "src/authorize.d.mts",
+    "src/authorize.mjs",
+    "src/browser-lifecycle.mjs",
+    "src/catalog.d.mts",
+    "src/catalog.mjs",
+    "src/entitlements.d.mts",
+    "src/entitlements.mjs",
+    "src/index.d.mts",
+    "src/index.mjs",
+    "src/paths.mjs",
+    "src/policy.mjs",
+    "src/rosters.d.mts",
+    "src/rosters.mjs",
+    "src/snapshot.mjs",
+    "src/verify-identity.d.mts",
+    "src/verify-identity.mjs"
   ],
   "sideEffects": [
     "./src/*.astro"
@@ -33,7 +54,8 @@
     "test": "node --test test/*.test.mjs",
     "check": "npm test && npm run check:types && npm run check:astro",
     "check:types": "tsc --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 test/types.mts",
-    "check:astro": "astro build --root fixtures/starlight"
+    "check:astro": "astro build --root fixtures/starlight",
+    "release:prepare": "node scripts/release.mjs prepare"
   },
   "dependencies": {
     "jose": "6.2.12"
@@ -58,5 +80,9 @@
     "@astrojs/starlight": {
       "optional": true
     }
+  },
+  "homepage": "https://github.com/ehven-consultants-npm-products/ehven-starlight-area-cloudflare-access-controller#readme",
+  "bugs": {
+    "url": "https://github.com/ehven-consultants-npm-products/ehven-starlight-area-cloudflare-access-controller/issues"
   }
 }

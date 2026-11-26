@@ -4,3 +4,4 @@ coverage/
 .astro/
 fixtures/starlight/.astro/
 fixtures/starlight/dist/
+/release/

@@ -3,9 +3,6 @@
 Independent roster authorization for protected documentation or training areas,
 with Cloudflare Access verification and optional Starlight components. MIT licensed.
 
-This is unreleased development source. The package is marked private while release
-acceptance is completed. A registry installation is not available from this repository yet.
-
 ## Boundaries
 
 - An area is an explicit URL root and its descendants. Shared ancestors and shared
@@ -43,8 +40,7 @@ Use a patched host: Astro 7.3.8 has advisories GHSA-mh32-jxcr-mh9f and
 GHSA-r3h5-4585-7x3w. The components use static tags, and this fixture has no Node
 image adapter, but this does not assess unrelated consumer code. The permissive
 peer range describes functional compatibility, not a blanket security approval
-of every older host version. Browser interaction, alternate host versions and deployed
-Cloudflare acceptance remain pending; a build is not evidence of those behaviors.
+of every older host version. The Chromium acceptance fixture covers navigation, identity presentation, and snapshot reloads. Verify your Access applications and Worker on the deployed site.
 
 The pure API and JWT tests support Node 22.14.0 and later. The maintained Astro
 7.4.13 build fixture requires Node 22.23.4 or later; its higher requirement belongs
@@ -54,10 +50,10 @@ the optional components; `npm run check` includes the Astro build.
 
 ## Minimal policy
 
-Install a supplied development tarball in a separate project:
+Install the package in the consuming project:
 
 ```sh
-npm install /absolute/path/to/ehven-starlight-area-cloudflare-access-controller-0.1.0-dev.0.tgz
+npm install @ehven/starlight-area-cloudflare-access-controller
 ```
 
 Keep private source configuration in the consuming project's
@@ -225,3 +221,7 @@ removing this one. Preserve Cloudflare Access during rollback; avoid restoring a
 Worker that serves protected assets without checking current membership. Preview
 requests, payments and CRM records do not change enrollment unless the consumer
 implements a separate, authorized enrollment workflow.
+
+## Support
+
+Report ordinary issues through the [GitHub issue tracker](https://github.com/ehven-consultants-npm-products/ehven-starlight-area-cloudflare-access-controller/issues). For suspected vulnerabilities, follow the [private reporting instructions](./SECURITY.md). See the [changelog](./CHANGELOG.md) for release changes.
